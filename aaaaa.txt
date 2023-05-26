@@ -1,0 +1,3 @@
+implementation 'com.arthenica:mobile-ffmpeg-min-gpl:4.4'
+
+library for android ffmpeg

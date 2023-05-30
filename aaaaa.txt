@@ -5,3 +5,5 @@ library for android ffmpeg
 new library must try
 
 com.arthenica:mobile-ffmpeg-min-gpl:4.2.2.LTS
+
+implementation "com.arthenica:mobile-ffmpeg-min:4.4.LTS"

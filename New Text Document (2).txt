@@ -1,0 +1,176 @@
+// Inside the scroll listener
+if (maxLastVisibleItemPosition >= totalItemCount - 1) {
+    // Load the next batch of data (e.g., 10 items)
+    // Make sure you don't exceed a total list size of 20
+    if (totalItemCount < 20) {
+        int currentSize = adapter.getItemCount();
+        int newSize = currentSize + 10;
+        if (newSize > 20) {
+            newSize = 20; // Limit the total list size to 20
+        }
+
+        // Load and add more data to your adapter, e.g., from an API
+        List<DataItem> newData = loadNextBatchOfData(currentSize, newSize);
+        adapter.addData(newData);
+
+        // Notify the adapter of the data changes
+        adapter.notifyDataSetChanged();
+    }
+}
+
+
+
+
+
+
+recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+    @Override
+    public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+        super.onScrolled(recyclerView, dx, dy);
+
+        StaggeredGridLayoutManager layoutManager = (StaggeredGridLayoutManager) recyclerView.getLayoutManager();
+        int[] lastVisibleItemPositions = layoutManager.findLastVisibleItemPositions(null);
+
+        // Calculate the maximum of the last visible item positions
+        int maxLastVisibleItemPosition = getMax(lastVisibleItemPositions);
+
+        int totalItemCount = layoutManager.getItemCount();
+
+        // Load more data when the user is near the end of the list
+        if (maxLastVisibleItemPosition >= totalItemCount - 1) {
+            // Load the next batch of data (e.g., 10 items)
+            List<DataItem> newData = loadNextBatchOfData();
+
+            // Make sure you don't exceed a total list size of 20
+            int currentSize = adapter.getItemCount();
+            int newSize = currentSize + newData.size();
+            if (newSize > 20) {
+                int itemsToRemove = newSize - 20;
+                adapter.removeItems(itemsToRemove);
+            }
+
+            // Add new data to your adapter
+            adapter.addData(newData);
+        }
+    }
+});
+
+
+
+
+
+// Inside your scroll listener
+recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+    @Override
+    public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+        super.onScrolled(recyclerView, dx, dy);
+
+        StaggeredGridLayoutManager layoutManager = (StaggeredGridLayoutManager) recyclerView.getLayoutManager();
+        int[] lastVisibleItemPositions = layoutManager.findLastVisibleItemPositions(null);
+
+        // Calculate the maximum of the last visible item positions
+        int maxLastVisibleItemPosition = getMax(lastVisibleItemPositions);
+
+        int totalItemCount = layoutManager.getItemCount();
+
+        // Load more data when the user is near the end of the list
+        if (!isLoading && maxLastVisibleItemPosition >= totalItemCount - 1) {
+            isLoading = true;
+
+            // Load the next batch of data (e.g., 10 items)
+            loadNextBatchOfData(currentPage, batchSize);
+        }
+    }
+});
+
+
+
+
+
+private void loadNextBatchOfData(int page, int batchSize) {
+    // Fetch data for the next page (e.g., from an API)
+    // Make sure to handle the result asynchronously
+
+    // Suppose newData is the list of items you fetched
+    List<DataItem> newData = fetchDataFromApi(page, batchSize);
+
+    // Update your adapter
+    adapter.addData(newData);
+
+    // Increment the current page
+    currentPage++;
+
+    // Check if the total count exceeds 20 items
+    int totalItemCount = adapter.getItemCount();
+    if (totalItemCount > 20) {
+        int itemsToRemove = totalItemCount - 20;
+        adapter.removeItems(itemsToRemove);
+    }
+
+    // Set isLoading to false after data is loaded
+    isLoading = false;
+}
+
+
+
+
+
+
+public class CustomAdapter extends RecyclerView.Adapter<CustomAdapter.ViewHolder> {
+
+    private final List<DataItem> itemList;
+    private final Context context;
+
+    public CustomAdapter(Context context, List<DataItem> itemList) {
+        this.context = context;
+        this.itemList = itemList;
+    }
+
+    @NonNull
+    @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(context).inflate(R.layout.item_layout, parent, false);
+        return new ViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        DataItem item = itemList.get(position);
+        holder.bind(item);
+    }
+
+    @Override
+    public int getItemCount() {
+        return itemList.size();
+    }
+
+    // ViewHolder class
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        private final TextView textView;
+
+        public ViewHolder(@NonNull View itemView) {
+            super(itemView);
+            textView = itemView.findViewById(R.id.textView);
+        }
+
+        public void bind(DataItem item) {
+            textView.setText(item.getText());
+        }
+    }
+
+    // Method to remove a specific number of items from the beginning of the list
+    public void removeItems(int itemCount) {
+        if (itemCount > 0 && itemCount <= itemList.size()) {
+            for (int i = 0; i < itemCount; i++) {
+                itemList.remove(0); // Remove items from the beginning of the list
+            }
+            notifyItemRangeRemoved(0, itemCount);
+        }
+    }
+
+    // Method to add new data to the adapter
+    public void addData(List<DataItem> newData) {
+        itemList.addAll(newData);
+        notifyDataSetChanged();
+    }
+}

@@ -1,0 +1,197 @@
+import android.app.Activity;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.MediaStore;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class VideoUploadActivity extends Activity {
+
+    private static final int PICK_VIDEO_REQUEST = 1;
+    private static final String UPLOAD_URL = "Your_Upload_URL"; // Replace with your server URL
+
+    private String selectedVideoPath;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_video_upload);
+
+        Button uploadButton = findViewById(R.id.uploadButton);
+        uploadButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                chooseVideo();
+            }
+        });
+    }
+
+    private void chooseVideo() {
+        Intent intent = new Intent();
+        intent.setType("video/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Video"), PICK_VIDEO_REQUEST);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == PICK_VIDEO_REQUEST && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri selectedVideoUri = data.getData();
+            selectedVideoPath = getPath(selectedVideoUri);
+            if (selectedVideoPath != null) {
+                uploadVideo(selectedVideoPath);
+            } else {
+                Toast.makeText(this, "Could not get the video path", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    private String getPath(Uri uri) {
+        String[] projection = {MediaStore.Video.Media.DATA};
+        Cursor cursor = getContentResolver().query(uri, projection, null, null, null);
+        if (cursor != null) {
+            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA);
+            cursor.moveToFirst();
+            return cursor.getString(column_index);
+        } else {
+            return null;
+        }
+    }
+
+    private void uploadVideo(final String videoPath) {
+        // Create a new Volley RequestQueue
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+
+        // Create a StringRequest to send a POST request to the server
+        StringRequest stringRequest = new StringRequest(Request.Method.POST, UPLOAD_URL,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            boolean error = jsonObject.getBoolean("error");
+                            String message = jsonObject.getString("message");
+
+                            if (!error) {
+                                // Video uploaded successfully
+                                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+                            } else {
+                                // Error occurred during video upload
+                                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("Upload Error", "Error: " + error.getMessage());
+                        Toast.makeText(getApplicationContext(), "Error occurred. Please try again.", Toast.LENGTH_LONG).show();
+                    }
+                }) {
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                // Add any additional parameters to send to the server
+                // params.put("key", "value");
+                return params;
+            }
+
+            @Override
+            protected Map<String, DataPart> getByteData() {
+                Map<String, DataPart> params = new HashMap<>();
+                // Add the video file to be uploaded
+                params.put("video", new DataPart("video.mp4", AppHelper.getFileDataFromPath(videoPath), "video/mp4"));
+                return params;
+            }
+        };
+
+        // Add the request to the RequestQueue
+        requestQueue.add(stringRequest);
+    }
+}
+
+
+
+
+
+
+
+public class AppHelper {
+
+    public static byte[] getFileDataFromPath(String filePath) {
+        File file = new File(filePath);
+        byte[] data = new byte[(int) file.length()];
+
+        try {
+            FileInputStream inputStream = new FileInputStream(file);
+            inputStream.read(data);
+            inputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return data;
+    }
+}
+
+
+
+
+public class DataPart {
+    private String fileName;
+    private byte[] data;
+    private String mimeType;
+
+    public DataPart(String fileName, byte[] data, String mimeType) {
+        this.fileName = fileName;
+        this.data = data;
+        this.mimeType = mimeType;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    public byte[] getData() {
+        return data;
+    }
+
+    public void setData(byte[] data) {
+        this.data = data;
+    }
+
+    public String getMimeType() {
+        return mimeType;
+    }
+
+    public void setMimeType(String mimeType) {
+        this.mimeType = mimeType;
+    }
+}
